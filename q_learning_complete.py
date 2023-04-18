@@ -64,14 +64,10 @@ class NavigationEnv(gym.Env):
         self.current_step = 0
 
         # Define other squares
-        self.square_pos = [
-            np.array([10, 10]),
-            np.array([20, 20]),
-            np.array([30, 30]),
-            np.array([40, 40]),
-            np.array([60, 60]),
-            np.array([70, 70])
-        ]
+
+        self.square_pos = np.array(
+            [[i,i] for i in range(10,80,10)]
+        )
 
         # Define reward for each square
         self.small_reward = 10
@@ -83,6 +79,8 @@ class NavigationEnv(gym.Env):
         self.penalty_countdown = [0, 0, 0]
 
     def step(self, action):
+        assert action in set([0,1,2,3])
+        
         # Define movement based on action taken
         if action == 0: # Up
             self.current_pos[1] += 1
@@ -90,7 +88,8 @@ class NavigationEnv(gym.Env):
             self.current_pos[1] -= 1
         elif action == 2: # Left
             self.current_pos[0] -= 1
-        elif action == 3: # Right
+        # elif action == 3: # Right
+        else:
             self.current_pos[0] += 1
 
         # Update current step
@@ -100,10 +99,12 @@ class NavigationEnv(gym.Env):
         distance_to_goal = np.sqrt(np.sum((self.current_pos - self.goal_pos) ** 2))
 
         # Check if maximum number of steps has been reached or if goal state has been reached
-        if self.current_step >= self.max_steps or np.array_equal(self.current_pos, self.goal_pos):
-            done = True
-        else:
-            done = False
+        # if self.current_step >= self.max_steps or np.array_equal(self.current_pos, self.goal_pos):
+        #     done = True
+        # else:
+        #     done = False
+
+        done = self.current_step >= self.max_steps or np.array_equal(self.current_pos,self.goal_pos)
 
         # Check if current position is on any other squares
         reward = self.step_reward
@@ -201,6 +202,8 @@ class NavigationEnv(gym.Env):
         if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
+
+
 
 """# Cliff Walking environment
 [Gymnasium documentation for cliff walking](https://gymnasium.farama.org/environments/toy_text/cliff_walking/#arguments)
