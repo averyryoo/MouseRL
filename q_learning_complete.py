@@ -47,6 +47,14 @@ class NavigationEnv(gym.Env):
         # self.observation_space = spaces.Box(low=0, high=255, shape=(64, 64, 3), dtype=np.uint8)
         self.observation_space = gym.spaces.Discrete(self.n_rows*self.n_cols)
 
+        # Initialize starting and goal positions
+        for i in range(env_map.shape[0]):
+            for j in range(env_map.shape[1]):
+                if env_map[i,j] == "s":
+                    self.start_pos = np.array([i,j])
+                if env_map[i,j] == "f":
+                    self.goal_pos = np.array([i,j])
+
         self.start_pos = np.array([0,0])
         self.goal_pos = np.array([self.n_rows-1,self.n_cols-1])
         self.curr_pos = None
@@ -58,18 +66,19 @@ class NavigationEnv(gym.Env):
         # Define reward for taking each step
         self.step_reward = -1
 
-        # Define maximum number of steps allowed
-        self.max_steps = 100
-
-        # Define current step
-        self.current_step = 0
-
+        # Change in position
         self.action_map = {
             0: np.array([1,0]),  # Up
             1: np.array([0,1]),  # Right
             2: np.array([-1,0]), # Down
             3: np.array([0,-1]), # Left
         }
+
+        # # Define maximum number of steps allowed
+        # self.max_steps = 100
+
+        # # Define current step
+        # self.current_step = 0
 
         # # Define initial state
         # self.current_state = np.array([0, 0])
@@ -112,19 +121,19 @@ class NavigationEnv(gym.Env):
         elif reward_type == "h":
             reward = np.choice([50,-100])
         else:
-            raise Exception("Unknown reward type - use 'n', 'l', or 'h'")
+            raise Exception("Unknown reward type - use 'n', 'l', 'h', or 'g'")
 
         # If caught in a trap, return to start
         if reward == -100:
             self.curr_pos = deepcopy(self.start_pos)
 
         # If reached the final destination, terminate
-        finished = np.equal(self.curr_pos,self.goal_pos):
+        finished = np.equal(self.curr_pos,self.goal_pos)
 
         # Index of new state in the flattened 
-        observation = self.n_cols*self.curr_pos[0] + self.curr_pos[1]
+        obs = self.n_cols*self.curr_pos[0] + self.curr_pos[1]
 
-        return observation, reward, finished, None, None
+        return obs, reward, finished, None, None
 
         # done = self.current_step >= self.max_steps or np.array_equal(self.current_pos,self.goal_pos)
 
@@ -204,60 +213,124 @@ class NavigationEnv(gym.Env):
         # return observation
 
     def render(self, mode='human'):
-        # Define color for goal state
-        goal_color = [0, 255, 0]
+        pass
+    #     # Define color for goal state
+    #     goal_color = [0, 255, 0]
 
-        # Define color for current position
-        current_pos_color = [255, 0, 0]
+    #     # Define color for current position
+    #     current_pos_color = [255, 0, 0]
 
-        # Define color for other squares
-        small_reward_color = [255, 255, 0]
-        large_reward_color = [0, 255, 255]
-        penalty_reward_color = [255, 0, 255]
+    #     # Define color for other squares
+    #     small_reward_color = [255, 255, 0]
+    #     large_reward_color = [0, 255, 255]
+    #     penalty_reward_color = [255, 0, 255]
 
-        # Define color for penalty countdowns
-        penalty_countdown_color = [128, 128, 128]
+    #     # Define color for penalty countdowns
+    #     penalty_countdown_color = [128, 128, 128]
 
-        # Define image
-        img = np.zeros((64, 64, 3), dtype=np.uint8)
+    #     # Define image
+    #     img = np.zeros((64, 64, 3), dtype=np.uint8)
 
-        # Add goal state to image
-        img[self.goal_pos[0], self.goal_pos[1], :] = goal_color
+    #     # Add goal state to image
+    #     img[self.goal_pos[0], self.goal_pos[1], :] = goal_color
 
-        # Add current position to image
-        img[self.current_pos[0], self.current_pos[1], :] = current_pos_color
+    #     # Add current position to image
+    #     img[self.current_pos[0], self.current_pos[1], :] = current_pos_color
 
-        # Add other squares to image
-        for i, square in enumerate(self.square_pos):
-            if i < 3:
-                color = small_reward_color
-            else:
-                color = large_reward_color
-                if self.penalty_countdown[i-3] > 0:
-                    img[square[0], square[1], :] = penalty_countdown_color
-            img[square[0], square[1], :] = color
+    #     # Add other squares to image
+    #     for i, square in enumerate(self.square_pos):
+    #         if i < 3:
+    #             color = small_reward_color
+    #         else:
+    #             color = large_reward_color
+    #             if self.penalty_countdown[i-3] > 0:
+    #                 img[square[0], square[1], :] = penalty_countdown_color
+    #         img[square[0], square[1], :] = color
 
-        # Show image
-        if mode == 'human':
-            from gym.envs.classic_control import rendering
-            if self.viewer is None:
-                self.viewer = rendering.SimpleImageViewer()
-            self.viewer.imshow(img)
-            return self.viewer.isopen
-        else:
-            return img
+    #     # Show image
+    #     if mode == 'human':
+    #         from gym.envs.classic_control import rendering
+    #         if self.viewer is None:
+    #             self.viewer = rendering.SimpleImageViewer()
+    #         self.viewer.imshow(img)
+    #         return self.viewer.isopen
+    #     else:
+    #         return img
 
     def close(self):
-        if self.viewer is not None:
-            self.viewer.close()
-            self.viewer = None
+        pass
+        # if self.viewer is not None:
+        #     self.viewer.close()
+        #     self.viewer = None
 
-# class Agent:
+class Agent_Q:
+    def __init__(
+        self,
+            env,                # environment
+            lr,                 # learning rate
+            epsilon,            # epsilon
+            df=1   # discount_factor
+    ):
+        self.n_actions = env.action_space.n
+        self.n_observations = env.observation_space.n
 
+        self.q_vals = np.zeros((self.n_observations, self.n_actions))
+        self.lr = lr
+        self.epsilon = epsilon
+        self.df = df
+        self.td_history = []
+        self.q_history = {}
+
+    def get_action(self, obs):
+        if np.random.rand() < self.epsilon:
+            return env.action_space.sample
+        else:
+            return int(np.argmax(self.q_vals[obs]))
+        
+    def update(self,obs,action,reward,finished,next_obs):
+        if finished:
+            next_q_val = 0
+        
+        else:
+            next_q_val = np.amax(self.q_vals[next_obs])
+        
+        td_loss = reward + self.df * next_q_val - self.q_vals[obs,action]
+        self.q_vals[obs,action] += self.lr * td_loss
+        self.td_history.append(td_loss)
+
+def env_layout_builder(shape,things_list):
+    """
+    Builds an environment by passing in a shape and a list of dictionaries of special squares
+    Args:
+        shape: (nxn) shape of environment
+        things_list: list of dicts of form {
+                                                "loc": [x,y] coordinates
+                                                "type": "s", "l", "h", "g" i.e., start, low risk, high risk, goal
+                                            }
+    """
+    env = np.full(shape,"n")
+    for thing in things_list:
+        env[thing["loc"][0],thing["loc"][1]] = thing["type"]
+    return env
 
 def main():
-    env = gym.make("CliffWalking-v0")
+    thing_list = [
+        {"loc": [0,0], "type": "s"},
+        {"loc": [0,3], "type": "l"},
+        {"loc": [0,6], "type": "l"},
+        {"loc": [3,6], "type": "l"},
+        {"loc": [3,0], "type": "h"},
+        {"loc": [6,0], "type": "h"},
+        {"loc": [6,3], "type": "h"},
+        {"loc": [6,6], "type": "g"},
+    ]
+
+
+    env_layout = env_layout_builder([7,7],thing_list)
     
+    env = NavigationEnv(env_layout)
+
+    a = Agent_Q(env,0.1,0.05)
 
     
 
