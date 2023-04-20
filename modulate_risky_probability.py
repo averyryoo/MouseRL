@@ -10,21 +10,27 @@ num_low_risk = cfg['reward']['num_low_risk']
 num_high_risk = cfg['reward']['num_high_risk']
 env_shape = cfg['env_shape']
 agent_cfg = cfg['agent']
+terminate_after_reward = cfg['terminate_after_reward']
 
-def get_nearest_loc_of_interest(a, env_map):
-
-    # # take N last trials
-    # history = a.q_history[-10:]
-    # path = np.concatenate([h[-1] for h in history])
+def get_nearest_loc_of_interest(a, env_map, strategy='last'):
+    '''
+    strategy: 'last' when we terminate after a reward, 'most_common' when we don't.
+                most_common just takes the most visited node (since a non-terminating episode
+                will tend to oscillate around one reward-dispensing square)
+    '''
 
     history = a.q_history[num_episodes - 1]
 
     path = history[-1]
 
-    # most visited node
-    values, counts = np.unique(path, return_counts=True)
-    fav = values[np.argmax(counts)]
-    fav_loc = np.array([fav // env_map.shape[0], fav % env_map.shape[1]])
+    if strategy == 'most_common':
+        # most visited node
+        values, counts = np.unique(path, return_counts=True)
+        fav = values[np.argmax(counts)]
+        fav_loc = np.array([fav // env_map.shape[0], fav % env_map.shape[1]])
+    if strategy == 'last':
+        fav = path[-1]
+        fav_loc = np.array([fav // env_map.shape[0], fav % env_map.shape[1]])
 
     min_dist = 1e6
     nearest = ''
@@ -79,16 +85,16 @@ for risky_prob in risky_probs:
             'values': [10, 30]
         }
 
-        a = train_agent(env_layout, reward_cfg, plot=True, num_episodes=num_episodes, agent_cfg=cfg['agent'])
+        a = train_agent(env_layout, reward_cfg, plot=False, num_episodes=num_episodes, agent_cfg=cfg['agent'], terminate_after_reward=terminate_after_reward)
 
-        nearest = get_nearest_loc_of_interest(a, env_layout)
+        nearest = get_nearest_loc_of_interest(a, env_layout, strategy='last')
         counts[nearest] += 1
 
     hs.append(counts['h'] / num_trials)
     ls.append(counts['l'] / num_trials)
 
 plt.plot(risky_probs, hs, color='b', label='chose high risk')
-plt.plot(risky_probs, ls, color='g', label='chose low risk')
+# plt.plot(risky_probs, ls, color='g', label='chose low risk')
 plt.ylabel('probability of mouse choice')
 plt.xlabel('probability of punishment for risky reward')
 plt.legend()

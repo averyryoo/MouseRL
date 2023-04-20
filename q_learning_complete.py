@@ -38,11 +38,12 @@ from agents import agents
 #     def __init__()
 
 class NavigationEnv(gym.Env):
-    def __init__(self, env_map, reward_cfg):
+    def __init__(self, env_map, reward_cfg, terminate_after_reward=False):
         # Define action and observation spaces
         self.n_rows = env_map.shape[0]
         self.n_cols = env_map.shape[1]
         self.action_space = gym.spaces.Discrete(4) # Up, Down, Left, Right
+        self.terminate_after_reward = terminate_after_reward
         # self.observation_space = spaces.Box(low=0, high=255, shape=(64, 64, 3), dtype=np.uint8)
         self.observation_space = gym.spaces.Discrete(self.n_rows*self.n_cols)
 
@@ -121,20 +122,20 @@ class NavigationEnv(gym.Env):
 
         if reward_type == "n" or reward_type == 's' or reward_type == 'g':
             reward = -1
-            #finished = False
+            finished = False
         elif reward_type == "l":
             reward = np.random.choice([self.rewards[0],-10],p=self.safe_reward_probs)
-            #finished = True
+            finished = self.terminate_after_reward
         elif reward_type == "h":
             reward = np.random.choice([self.rewards[1],-10], p=self.risky_reward_probs)
-            #finished = True
+            finished = self.terminate_after_reward
         else:
             raise Exception("Unknown reward type - use 'n', 'l', 'h', or 'g'")
 
         # If caught in a trap, return to start
         if reward == -100:
             self.current_pos = deepcopy(self.start_pos)
-        finished = False
+        # finished = False
 
         # If reached the final destination, terminate
         # finished = np.all(self.current_pos == self.goal_pos)
@@ -309,14 +310,14 @@ def env_layout_builder(shape,things_list):
         env[thing["loc"][0],thing["loc"][1]] = thing["type"]
     return env
 
-def train_agent(env_layout, reward_cfg, agent_cfg, plot=False, num_episodes=10000, max_steps=50):
+def train_agent(env_layout, reward_cfg, agent_cfg, terminate_after_reward=False, plot=False, num_episodes=10000, max_steps=50):
     
     agent_type = agent_cfg['rl_algo']
     lr = agent_cfg['lr']
     epsilon = agent_cfg['epsilon']
     df = agent_cfg['df']
 
-    env = NavigationEnv(env_layout, reward_cfg)
+    env = NavigationEnv(env_layout, reward_cfg, terminate_after_reward)
     # env.render()
     # plt.show()
 
@@ -394,7 +395,7 @@ def main():
         "values": [1,3]
     }
 
-    train_agent(env_layout, reward_cfg, plot=True, agent_type="SARSA")
+    train_agent(env_layout, reward_cfg, plot=False, agent_type="SARSA")
 
 if __name__ == "__main__":
     main()

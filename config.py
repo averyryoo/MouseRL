@@ -14,5 +14,6 @@ cfg = {
         'num_low_risk': 5,
         'high_risk_prob': [0.9, 0.1],   # [prob of receiving reward, prob of punishment]
         'low_risk_prob': [1, 0]         # [prob of receiving reward, prob of punishment]
-    }
+    },
+    'terminate_after_reward': False
 }
