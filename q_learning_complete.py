@@ -27,19 +27,18 @@ There are 3 main tasks for you to complete and 2 tasks to plot the results of th
 import numpy as np  # Arrays and numerical computing
 from tqdm import tqdm  # Progress bar
 import gymnasium as gym  # Reinforcement learning environments
+# from gymnasium.envs.classic_control import rendering
 import random  # Random number generation
 from copy import deepcopy
 
 import matplotlib.pyplot as plt  # Plotting and visualization
-from matplotlib import patches
-# from matplotlib import colormaps
-# cmap = colormaps.get_cmap("jet")
-
+from viz_util import plot_agent_history
+from agents import agents
 # class Agent:
 #     def __init__()
 
 class NavigationEnv(gym.Env):
-    def __init__(self, env_map):
+    def __init__(self, env_map, reward_cfg):
         # Define action and observation spaces
         self.n_rows = env_map.shape[0]
         self.n_cols = env_map.shape[1]
@@ -52,13 +51,14 @@ class NavigationEnv(gym.Env):
             for j in range(env_map.shape[1]):
                 if env_map[i,j] == "s":
                     self.start_pos = np.array([i,j])
-                if env_map[i,j] == "f":
+                if env_map[i,j] == "g":
                     self.goal_pos = np.array([i,j])
 
-        self.start_pos = np.array([0,0])
-        self.goal_pos = np.array([self.n_rows-1,self.n_cols-1])
-        self.curr_pos = None
-
+        # self.start_pos = np.array([0,0])
+        # self.goal_pos = np.array([self.n_rows-1,self.n_cols-1])
+        self.current_pos = np.where(env_map == 's')
+        #(self.current_pos)
+        self.env_map = env_map
 
         # Define reward for reaching the goal state
         self.goal_reward = 100
@@ -73,6 +73,11 @@ class NavigationEnv(gym.Env):
             2: np.array([-1,0]), # Down
             3: np.array([0,-1]), # Left
         }
+
+
+        reward_probs = reward_cfg['probs']
+        self.rewards = reward_cfg['values']
+        self.safe_reward_probs, self.risky_reward_probs = reward_probs
 
         # # Define maximum number of steps allowed
         # self.max_steps = 100
@@ -108,30 +113,30 @@ class NavigationEnv(gym.Env):
         new_pos = np.add(self.current_pos,self.action_map[action])
 
         if new_pos[0] in range(self.n_rows) and new_pos[1] in range(self.n_cols):
-            self.curr_pos = new_pos
+            self.current_pos = new_pos
         
         reward_type = self.env_map[self.current_pos[0],self.current_pos[1]]
 
-        reward = self.reward_map[reward_type]
+        #reward = self.reward_map[reward_type]
 
-        if reward_type == "n":
+        if reward_type == "n" or reward_type == 's' or reward_type == 'g':
             reward = -1
         elif reward_type == "l":
-            reward = np.choice([10,-100],p=[0.9,0.1])
+            reward = np.random.choice([self.rewards[0],-100],p=self.safe_reward_probs)
         elif reward_type == "h":
-            reward = np.choice([50,-100])
+            reward = np.random.choice([self.rewards[1],-100], p=self.risky_reward_probs)
         else:
             raise Exception("Unknown reward type - use 'n', 'l', 'h', or 'g'")
 
         # If caught in a trap, return to start
         if reward == -100:
-            self.curr_pos = deepcopy(self.start_pos)
+            self.current_pos = deepcopy(self.start_pos)
 
         # If reached the final destination, terminate
-        finished = np.equal(self.curr_pos,self.goal_pos)
+        finished = np.all(self.current_pos == self.goal_pos)
 
         # Index of new state in the flattened 
-        obs = self.n_cols*self.curr_pos[0] + self.curr_pos[1]
+        obs = self.n_cols*self.current_pos[0] + self.current_pos[1]
 
         return obs, reward, finished, None, None
 
@@ -193,9 +198,9 @@ class NavigationEnv(gym.Env):
 
     def reset(self):
         # Reset current position
-        self.curr_pos = deepcopy(self.start_pos)
+        self.current_pos = deepcopy(self.start_pos)
 
-        return self.n_cols*self.curr_pos[0] + self.curr_pos[1]
+        return self.n_cols*self.current_pos[0] + self.current_pos[1]
 
         # # Reset penalty countdowns
         # self.penalty_countdown = [0, 0, 0]
@@ -212,91 +217,78 @@ class NavigationEnv(gym.Env):
         # # Return initial observation
         # return observation
 
-    def render(self, mode='human'):
-        pass
-    #     # Define color for goal state
-    #     goal_color = [0, 255, 0]
+    def render(self, ax=None, mode='human'):
 
-    #     # Define color for current position
-    #     current_pos_color = [255, 0, 0]
+        if ax is None:
+            _, ax = plt.subplots(1)
+        # pass
+        # Define color for goal state
+        goal_color = [0, 255, 0]
 
-    #     # Define color for other squares
-    #     small_reward_color = [255, 255, 0]
-    #     large_reward_color = [0, 255, 255]
-    #     penalty_reward_color = [255, 0, 255]
+        # Define color for current position
+        current_pos_color = [255, 0, 0]
 
-    #     # Define color for penalty countdowns
-    #     penalty_countdown_color = [128, 128, 128]
+        # Define color for other squares
+        empty_color = [255, 255, 255]
+        small_reward_color = [255, 255, 0]
+        large_reward_color = [0, 255, 255]
+        penalty_reward_color = [255, 0, 255]
 
-    #     # Define image
-    #     img = np.zeros((64, 64, 3), dtype=np.uint8)
+        colors = {
+            'n': empty_color,
+            's': empty_color,
+            'l': small_reward_color,
+            'h': large_reward_color,
+            'g': goal_color
+        }
 
-    #     # Add goal state to image
-    #     img[self.goal_pos[0], self.goal_pos[1], :] = goal_color
+        # Define color for penalty countdowns
+        penalty_countdown_color = [128, 128, 128]
 
-    #     # Add current position to image
-    #     img[self.current_pos[0], self.current_pos[1], :] = current_pos_color
+        # Define image
+        #img = np.zeros((64, 64, 3), dtype=np.uint8)
+        img = np.zeros((*self.env_map.shape, 3))
 
-    #     # Add other squares to image
-    #     for i, square in enumerate(self.square_pos):
-    #         if i < 3:
-    #             color = small_reward_color
-    #         else:
-    #             color = large_reward_color
-    #             if self.penalty_countdown[i-3] > 0:
-    #                 img[square[0], square[1], :] = penalty_countdown_color
-    #         img[square[0], square[1], :] = color
+        # Add goal state to image
+        #img[self.goal_pos[0], self.goal_pos[1], :] = goal_color
 
-    #     # Show image
-    #     if mode == 'human':
-    #         from gym.envs.classic_control import rendering
-    #         if self.viewer is None:
-    #             self.viewer = rendering.SimpleImageViewer()
-    #         self.viewer.imshow(img)
-    #         return self.viewer.isopen
-    #     else:
-    #         return img
+       
+
+        for i in range(self.env_map.shape[0]):
+            for j in range(self.env_map.shape[1]):
+                img[i, j] = colors[self.env_map[i, j]]
+
+        # Add current position to image
+        #img[self.current_pos[0], self.current_pos[1], :] = current_pos_color
+        
+        # Add other squares to image
+        # for i, square in enumerate(self.square_pos):
+        #     if i < 3:
+        #         color = small_reward_color
+        #     else:
+        #         color = large_reward_color
+        #         if self.penalty_countdown[i-3] > 0:
+        #             img[square[0], square[1], :] = penalty_countdown_color
+        #     img[square[0], square[1], :] = color
+
+        # Show image
+        if mode == 'human':
+            
+            # if self.viewer is None:
+            #     self.viewer = rendering.SimpleImageViewer()
+            # self.viewer.imshow(img)
+            # return self.viewer.isopen
+            ax.imshow(img)
+            ax.invert_yaxis()
+            #plt.show()
+        else:
+            return img
 
     def close(self):
         pass
         # if self.viewer is not None:
         #     self.viewer.close()
         #     self.viewer = None
-
-class Agent_Q:
-    def __init__(
-        self,
-            env,                # environment
-            lr,                 # learning rate
-            epsilon,            # epsilon
-            df=1   # discount_factor
-    ):
-        self.n_actions = env.action_space.n
-        self.n_observations = env.observation_space.n
-
-        self.q_vals = np.zeros((self.n_observations, self.n_actions))
-        self.lr = lr
-        self.epsilon = epsilon
-        self.df = df
-        self.td_history = []
-        self.q_history = {}
-
-    def get_action(self, obs):
-        if np.random.rand() < self.epsilon:
-            return env.action_space.sample
-        else:
-            return int(np.argmax(self.q_vals[obs]))
-        
-    def update(self,obs,action,reward,finished,next_obs):
-        if finished:
-            next_q_val = 0
-        
-        else:
-            next_q_val = np.amax(self.q_vals[next_obs])
-        
-        td_loss = reward + self.df * next_q_val - self.q_vals[obs,action]
-        self.q_vals[obs,action] += self.lr * td_loss
-        self.td_history.append(td_loss)
 
 def env_layout_builder(shape,things_list):
     """
@@ -313,6 +305,42 @@ def env_layout_builder(shape,things_list):
         env[thing["loc"][0],thing["loc"][1]] = thing["type"]
     return env
 
+def train_agent(env_layout, reward_cfg, plot=False, num_episodes=10000, agent_type='Q'):
+    
+    env = NavigationEnv(env_layout, reward_cfg)
+    # env.render()
+    # plt.show()
+
+    a = agents[agent_type](env,0.1,0.05)
+
+    save_episodes = [0, 1, 5, 10, 50, 100, 200, 500, 1000, 5000]
+    save_episodes = [0, 5, 1000, 5000, 10000]
+
+
+    for episode in tqdm(range(num_episodes)):
+        obs = env.reset()
+        path = [obs]
+        finished = False
+        i = 0
+        while not finished and i < 50:
+            i += 1
+            action = a.get_action(obs)
+
+            next_obs, reward, finished, _, _ = env.step(action)
+
+            a.update(obs, action, reward, finished, next_obs)
+
+            obs = next_obs
+            path.append(obs)
+
+        if episode in save_episodes:
+            a.q_history[episode] = (a.q_vals.copy(), path)
+
+    if plot:
+        plot_agent_history(a)
+
+    return a
+    
 def main():
     thing_list = [
         {"loc": [0,0], "type": "s"},
@@ -325,14 +353,14 @@ def main():
         {"loc": [6,6], "type": "g"},
     ]
 
-
     env_layout = env_layout_builder([7,7],thing_list)
-    
-    env = NavigationEnv(env_layout)
 
-    a = Agent_Q(env,0.1,0.05)
+    reward_probs = (
+        [0.9, 0.1],
+        [0.5, 0.5]
+    )
 
-    
+    train_agent(env_layout, reward_probs, plot=True)
 
 if __name__ == "__main__":
     main()
