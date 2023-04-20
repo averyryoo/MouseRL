@@ -316,25 +316,48 @@ def train_agent(env_layout, reward_cfg, plot=False, num_episodes=10000, agent_ty
     save_episodes = [0, 1, 5, 10, 50, 100, 200, 500, 1000, 5000]
     save_episodes = [0, 5, 1000, 5000, 10000]
 
+    if agent_type == "Q":
+        for episode in tqdm(range(num_episodes)):
+            obs = env.reset()
+            path = [obs]
+            finished = False
+            i = 0
+            while not finished and i < 50:
+                i += 1
+                action = a.get_action(obs)
 
-    for episode in tqdm(range(num_episodes)):
-        obs = env.reset()
-        path = [obs]
-        finished = False
-        i = 0
-        while not finished and i < 50:
-            i += 1
-            action = a.get_action(obs)
+                next_obs, reward, finished, _, _ = env.step(action)
 
-            next_obs, reward, finished, _, _ = env.step(action)
+                a.update(obs, action, reward, finished, next_obs)
 
-            a.update(obs, action, reward, finished, next_obs)
+                obs = next_obs
+                path.append(obs)
 
-            obs = next_obs
-            path.append(obs)
+            if episode in save_episodes:
+                a.q_history[episode] = (a.q_vals.copy(), path)
 
-        if episode in save_episodes:
-            a.q_history[episode] = (a.q_vals.copy(), path)
+    # Kinda hacky but I do not have the mental fortitude to make a generalized training loop for both agents rn
+    if agent_type == "SARSA":
+        for episode in tqdm(range(num_episodes)):
+            obs = env.reset()
+            path = [obs]
+            finished = False
+            i = 0
+            while not finished and i < 50:
+                i += 1
+                # action = a.get_action(obs)
+
+                next_obs, reward, finished, _, _ = env.step(a.curr_action)
+                a_actual_curr = deepcopy(a.curr_action)
+                a.curr_action = a.get_action(next_obs)
+                a.update(obs, a_actual_curr, reward, finished, next_obs,a.curr_action)
+
+                obs = next_obs
+                path.append(obs)
+
+            if episode in save_episodes:
+                a.q_history[episode] = (a.q_vals.copy(), path)
+
 
     if plot:
         plot_agent_history(a)
@@ -355,12 +378,15 @@ def main():
 
     env_layout = env_layout_builder([7,7],thing_list)
 
-    reward_probs = (
-        [0.9, 0.1],
-        [0.5, 0.5]
-    )
+    reward_cfg = {
+        "probs": (
+            [0.9, 0.1],
+            [0.5, 0.5]
+        ),
+        "values": [1,3]
+    }
 
-    train_agent(env_layout, reward_probs, plot=True)
+    train_agent(env_layout, reward_cfg, plot=True, agent_type="SARSA")
 
 if __name__ == "__main__":
     main()
