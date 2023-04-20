@@ -75,9 +75,9 @@ class NavigationEnv(gym.Env):
         }
 
 
-        reward_probs = reward_cfg['probs']
         self.rewards = reward_cfg['values']
-        self.safe_reward_probs, self.risky_reward_probs = reward_probs
+        self.safe_reward_probs = reward_cfg['low_risk_prob']
+        self.risky_reward_probs = reward_cfg['high_risk_prob']
 
         # # Define maximum number of steps allowed
         # self.max_steps = 100
@@ -121,19 +121,23 @@ class NavigationEnv(gym.Env):
 
         if reward_type == "n" or reward_type == 's' or reward_type == 'g':
             reward = -1
+            #finished = False
         elif reward_type == "l":
-            reward = np.random.choice([self.rewards[0],-100],p=self.safe_reward_probs)
+            reward = np.random.choice([self.rewards[0],-10],p=self.safe_reward_probs)
+            #finished = True
         elif reward_type == "h":
-            reward = np.random.choice([self.rewards[1],-100], p=self.risky_reward_probs)
+            reward = np.random.choice([self.rewards[1],-10], p=self.risky_reward_probs)
+            #finished = True
         else:
             raise Exception("Unknown reward type - use 'n', 'l', 'h', or 'g'")
 
         # If caught in a trap, return to start
         if reward == -100:
             self.current_pos = deepcopy(self.start_pos)
+        #finished = False
 
         # If reached the final destination, terminate
-        finished = np.all(self.current_pos == self.goal_pos)
+        # finished = np.all(self.current_pos == self.goal_pos)
 
         # Index of new state in the flattened 
         obs = self.n_cols*self.current_pos[0] + self.current_pos[1]
@@ -305,16 +309,20 @@ def env_layout_builder(shape,things_list):
         env[thing["loc"][0],thing["loc"][1]] = thing["type"]
     return env
 
-def train_agent(env_layout, reward_cfg, plot=False, num_episodes=10000, agent_type='Q'):
+def train_agent(env_layout, reward_cfg, agent_cfg, plot=False, num_episodes=10000, max_steps=50):
     
+    agent_type = agent_cfg['rl_algo']
+    lr = agent_cfg['lr']
+    epsilon = agent_cfg['epsilon']
+    df = agent_cfg['df']
+
     env = NavigationEnv(env_layout, reward_cfg)
     # env.render()
     # plt.show()
 
-    a = agents[agent_type](env,0.1,0.05)
+    a = agents[agent_type](env,lr,epsilon,df)
 
-    save_episodes = [0, 1, 5, 10, 50, 100, 200, 500, 1000, 5000]
-    save_episodes = [0, 5, 1000, 5000, 10000]
+    save_episodes = [0, 5, 10, 15, 25, 50, 1000, 5000, 10000, num_episodes - 1]
 
     if agent_type == "Q":
         for episode in tqdm(range(num_episodes)):
@@ -322,7 +330,7 @@ def train_agent(env_layout, reward_cfg, plot=False, num_episodes=10000, agent_ty
             path = [obs]
             finished = False
             i = 0
-            while not finished and i < 50:
+            while not finished and i < max_steps:
                 i += 1
                 action = a.get_action(obs)
 
@@ -343,7 +351,7 @@ def train_agent(env_layout, reward_cfg, plot=False, num_episodes=10000, agent_ty
             path = [obs]
             finished = False
             i = 0
-            while not finished and i < 50:
+            while not finished and i < max_steps:
                 i += 1
                 # action = a.get_action(obs)
 

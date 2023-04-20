@@ -11,7 +11,7 @@ def plot_agent_history(agent):
 
     for i, (episode, (q_values, path)) in enumerate(agent.q_history.items()):
         for ax in axs[i, :]:
-            setup_axis(ax)
+            setup_axis(ax, agent.env.env_map)
             agent.env.render(ax)
         plot_path(axs[i, 0], path, episode, agent.env.env_map)
         plot_policy(axs[i, 1], q_values, episode, agent.env.env_map)
@@ -20,11 +20,13 @@ def plot_agent_history(agent):
     plt.show()
 
 
-def setup_axis(ax):
-    ax.set_xticks(np.arange(0, 7) - 0.5)
-    ax.set_yticks(np.arange(0, 7) - 0.5)
-    ax.set_xlim(-0.5, 6.5)
-    ax.set_ylim(-0.5, 6.5)
+def setup_axis(ax, env_layout):
+    xticks = np.arange(0, env_layout.shape[1]) - 0.5
+    yticks = np.arange(0, env_layout.shape[0]) - 0.5
+    ax.set_xticks(xticks)
+    ax.set_yticks(yticks)
+    ax.set_xlim(xticks[0], xticks[-1] + 1)
+    ax.set_ylim(yticks[0], yticks[-1] + 1)
     ax.grid(lw=1, c='k')
     # # Add in color patches
     # grass = patches.Rectangle(xy=(0, 1), width=13, height=3, fc="xkcd:grass green", alpha=0.6, zorder=0)
