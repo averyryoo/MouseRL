@@ -134,7 +134,7 @@ class NavigationEnv(gym.Env):
         # If caught in a trap, return to start
         if reward == -100:
             self.current_pos = deepcopy(self.start_pos)
-        #finished = False
+        finished = False
 
         # If reached the final destination, terminate
         # finished = np.all(self.current_pos == self.goal_pos)
