@@ -28,13 +28,7 @@ def setup_axis(ax, env_layout):
     ax.set_xlim(xticks[0], xticks[-1] + 1)
     ax.set_ylim(yticks[0], yticks[-1] + 1)
     ax.grid(lw=1, c='k')
-    # # Add in color patches
-    # grass = patches.Rectangle(xy=(0, 1), width=13, height=3, fc="xkcd:grass green", alpha=0.6, zorder=0)
-    # start = patches.Rectangle(xy=(0, 0), width=1, height=1, fc="xkcd:bright blue", alpha=0.6, zorder=0)
-    # end = patches.Rectangle(xy=(11, 0), width=1, height=1, fc="xkcd:red", alpha=0.75, zorder=0)
-    # cliff = patches.Rectangle(xy=(1, 0), width=10, height=1, fc="xkcd:dark brown", zorder=2)
-    # for patch in [grass, start, end, cliff]:
-    #     ax.add_patch(patch)
+
     ax.set_xticklabels([])
     ax.set_yticklabels([])
 

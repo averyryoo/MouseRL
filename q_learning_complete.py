@@ -80,36 +80,8 @@ class NavigationEnv(gym.Env):
         self.safe_reward_probs = reward_cfg['low_risk_prob']
         self.risky_reward_probs = reward_cfg['high_risk_prob']
 
-        # # Define maximum number of steps allowed
-        # self.max_steps = 100
-
-        # # Define current step
-        # self.current_step = 0
-
-        # # Define initial state
-        # self.current_state = np.array([0, 0])
-
-        # # Define goal state
-        # self.goal_pos = np.array([50, 50])
-        # # Define other squares
-
-        # self.square_pos = np.array(
-        #     [[i,i] for i in range(10,80,10)]
-        # )
-
-        # # Define reward for each square
-        # self.small_reward = 10
-        # self.large_reward = 50
-        # self.penalty_reward = -20
-
-        # # Define penalty turns for each large reward square
-        # self.penalty_turns = 3
-        # self.penalty_countdown = [0, 0, 0]
-
     def step(self, action):
         assert action in set([0,1,2,3])
-        
-        # new_state = deepcopy(self.current_state)
 
         new_pos = np.add(self.current_pos,self.action_map[action])
 
@@ -117,8 +89,6 @@ class NavigationEnv(gym.Env):
             self.current_pos = new_pos
         
         reward_type = self.env_map[self.current_pos[0],self.current_pos[1]]
-
-        #reward = self.reward_map[reward_type]
 
         if reward_type == "n" or reward_type == 's' or reward_type == 'g':
             reward = -1
@@ -135,92 +105,17 @@ class NavigationEnv(gym.Env):
         # If caught in a trap, return to start
         if reward == -100:
             self.current_pos = deepcopy(self.start_pos)
-        # finished = False
-
-        # If reached the final destination, terminate
-        # finished = np.all(self.current_pos == self.goal_pos)
 
         # Index of new state in the flattened 
         obs = self.n_cols*self.current_pos[0] + self.current_pos[1]
 
         return obs, reward, finished, None, None
 
-        # done = self.current_step >= self.max_steps or np.array_equal(self.current_pos,self.goal_pos)
-
-
-
-        # # Check if current position is on any other squares
-        # reward = self.step_reward
-        # for i, square in enumerate(self.square_pos):
-        #     if np.array_equal(self.current_pos, square):
-        #         if i < 3:
-        #             reward += self.small_reward
-        #         else:
-        #             if self.penalty_countdown[i-3] > 0:
-        #                 self.penalty_countdown[i-3] -= 1
-        #             else:
-        #                 if np.random.rand() < 0.5:
-        #                     reward += self.large_reward
-        #                     self.penalty_countdown[i-3] = self.penalty_turns
-        #                 else:
-        #                     reward += self.penalty_reward
-
-        # # Calculate total reward
-        # if done and np.array_equal(self.current_pos, self.goal_pos):
-        #     reward += self.goal_reward
-
-        # # Define observation
-        # observation = np.zeros((64, 64, 3), dtype=np.uint8)
-        # observation[self.current_pos[0], self.current_pos[1], :] = 255
-        # for square in self.square_pos:
-        #     observation[square[0], square[1], 0] = 255
-
-        # # Return step information
-        # return observation, reward, done, {}
-
-        # # Define movement based on action taken
-        # if action == 0: # Up
-        #     self.current_pos[1] += 1
-        # elif action == 1: # Down
-        #     self.current_pos[1] -= 1
-        # elif action == 2: # Left
-        #     self.current_pos[0] -= 1
-        # # elif action == 3: # Right
-        # else:
-        #     self.current_pos[0] += 1
-
-        # # Update current step
-        # self.current_step += 1
-
-        # # Calculate distance to goal state
-        # distance_to_goal = np.sqrt(np.sum((self.current_pos - self.goal_pos) ** 2))
-
-        # Check if maximum number of steps has been reached or if goal state has been reached
-        # if self.current_step >= self.max_steps or np.array_equal(self.current_pos, self.goal_pos):
-        #     done = True
-        # else:
-        #     done = False
-
     def reset(self):
         # Reset current position
         self.current_pos = deepcopy(self.start_pos)
 
         return self.n_cols*self.current_pos[0] + self.current_pos[1]
-
-        # # Reset penalty countdowns
-        # self.penalty_countdown = [0, 0, 0]
-
-        # # Reset current step
-        # self.current_step = 0
-
-        # # Define observation
-        # observation = np.zeros((64, 64, 3), dtype=np.uint8)
-        # observation[self.current_pos[0], self.current_pos[1], :] = 255
-        # for square in self.square_pos:
-        #     observation[square[0], square[1], 0] = 255
-
-        # # Return initial observation
-        # return observation
 
     def render(self, ax=None, mode='human'):
 
@@ -253,47 +148,24 @@ class NavigationEnv(gym.Env):
         # Define image
         #img = np.zeros((64, 64, 3), dtype=np.uint8)
         img = np.zeros((*self.env_map.shape, 3))
-
-        # Add goal state to image
-        #img[self.goal_pos[0], self.goal_pos[1], :] = goal_color
-
-       
+    
 
         for i in range(self.env_map.shape[0]):
             for j in range(self.env_map.shape[1]):
                 img[i, j] = colors[self.env_map[i, j]]
 
-        # Add current position to image
-        #img[self.current_pos[0], self.current_pos[1], :] = current_pos_color
-        
-        # Add other squares to image
-        # for i, square in enumerate(self.square_pos):
-        #     if i < 3:
-        #         color = small_reward_color
-        #     else:
-        #         color = large_reward_color
-        #         if self.penalty_countdown[i-3] > 0:
-        #             img[square[0], square[1], :] = penalty_countdown_color
-        #     img[square[0], square[1], :] = color
 
         # Show image
         if mode == 'human':
-            
-            # if self.viewer is None:
-            #     self.viewer = rendering.SimpleImageViewer()
-            # self.viewer.imshow(img)
-            # return self.viewer.isopen
+
             ax.imshow(img)
             ax.invert_yaxis()
-            #plt.show()
+
         else:
             return img
 
     def close(self):
         pass
-        # if self.viewer is not None:
-        #     self.viewer.close()
-        #     self.viewer = None
 
 def env_layout_builder(shape,things_list):
     """
@@ -318,8 +190,6 @@ def train_agent(env_layout, reward_cfg, agent_cfg, terminate_after_reward=False,
     df = agent_cfg['df']
 
     env = NavigationEnv(env_layout, reward_cfg, terminate_after_reward)
-    # env.render()
-    # plt.show()
 
     a = agents[agent_type](env,lr,epsilon,df)
 

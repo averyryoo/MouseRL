@@ -1,9 +1,9 @@
 cfg = {
     'agent': {
         'rl_algo': 'Q',                 # Q or SARSA
-        'lr': 0.3,
-        'epsilon': 0.05,
-        'df': 0.5
+        'lr': 0.3,                      # learning rate
+        'epsilon': 0.05,                # epsilon
+        'df': 0.5                       # discount factor
     },
     'num_episodes': 20,
     'max_steps_per_episode': 50,
